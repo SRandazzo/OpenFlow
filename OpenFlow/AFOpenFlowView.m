@@ -58,13 +58,12 @@ const static CGFloat kReflectionFraction = 0.85;
 }
 
 - (void)setUpInitialState {
-    
     [[self appWindow] addObjectInterestedInTouches:self];
     
     [self setBackgroundColor:[UIColor clearColor]];
     // Set up the default image for the coverflow.
 	self.defaultImage = [self.dataSource defaultImage];
-	
+    
 	// Create data holders for onscreen & offscreen covers & UIImage objects.
 	coverImages = [[NSMutableDictionary alloc] init];
 	coverImageHeights = [[NSMutableDictionary alloc] init];
@@ -75,14 +74,15 @@ const static CGFloat kReflectionFraction = 0.85;
 	// Initialize the visible and selected cover range.
 	lowerVisibleCover = upperVisibleCover = -1;
 	selectedCoverView = nil;
-	
+    
 	// Set up the cover's left & right transforms.
-	leftTransform = CATransform3DIdentity;
+    leftTransform = CATransform3DTranslate(CATransform3DIdentity, 0, 0, SIDE_COVER_ZPOSITION / 2.0);
     CGFloat sideCoverAngle = [AFOpenFlowGeometry sideCoverAngle];
 	leftTransform = CATransform3DRotate(leftTransform, sideCoverAngle, 0.0f, 1.0f, 0.0f);
-	rightTransform = CATransform3DIdentity;
+    
+    rightTransform = CATransform3DTranslate(CATransform3DIdentity, 0, 0, SIDE_COVER_ZPOSITION / 2.0);
 	rightTransform = CATransform3DRotate(rightTransform, sideCoverAngle, 0.0f, -1.0f, 0.0f);
-	
+    
     self.scrollEnabled = YES;
     self.userInteractionEnabled = YES;
     self.showsVerticalScrollIndicator = NO;
@@ -109,7 +109,6 @@ const static CGFloat kReflectionFraction = 0.85;
     selectedCoverCaption.font = [UIFont systemFontOfSize:CAPTION_FONTSIZE];
     
     [self addSubview:selectedCoverCaption];
-    
 }
 
 - (AFItemView *)coverForIndex:(int)coverIndex {
@@ -147,7 +146,7 @@ const static CGFloat kReflectionFraction = 0.85;
 - (void)layoutCover:(AFItemView *)aCover selectedCover:(int)selectedIndex animated:(Boolean)animated  {
 	int coverNumber = aCover.number;
 	CATransform3D newTransform;
-	CGFloat newZPosition = [AFOpenFlowGeometry sideCoverZPosition];
+	CGFloat newZPosition = [AFOpenFlowGeometry sideCoverZPosition]/2;
 	CGPoint newPosition;
 	
     
@@ -173,8 +172,31 @@ const static CGFloat kReflectionFraction = 0.85;
 	}
 	
 	aCover.layer.transform = newTransform;
-	aCover.layer.zPosition = newZPosition;
-	aCover.layer.position = newPosition;
+	//aCover.layer.zPosition = newZPosition;
+	
+    if([[[UIDevice currentDevice] systemVersion] floatValue] >= 5.0 && animated) {
+    	
+        CABasicAnimation *zPositionAnimation = [CABasicAnimation animationWithKeyPath:@"zPosition"];
+    	
+        [zPositionAnimation setToValue:[NSNumber numberWithFloat:newZPosition]];
+    	
+         [zPositionAnimation setDuration:.3];
+     	
+         [zPositionAnimation setTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
+     	
+         [zPositionAnimation setRemovedOnCompletion:NO];
+      	
+          [zPositionAnimation setFillMode:kCAFillModeForwards];
+      	
+          [aCover.layer addAnimation:zPositionAnimation forKey:nil];
+       	
+         } else {
+       	
+           aCover.layer.zPosition = newZPosition;
+       	
+    }
+    
+    aCover.layer.position = newPosition;
 	
 	if (animated) {
 		[UIView commitAnimations];
