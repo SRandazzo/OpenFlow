@@ -109,12 +109,17 @@ const static CGFloat kReflectionFraction = 0.85;
     selectedCoverCaption.font = [UIFont systemFontOfSize:CAPTION_FONTSIZE];
     
     [self addSubview:selectedCoverCaption];
+    
+    maxImageSize = CGSizeZero;
 }
 
 - (AFItemView *)coverForIndex:(int)coverIndex {
 	AFItemView *coverView = [self dequeueReusableCover];
 	if (!coverView)
 		coverView = [[[AFItemView alloc] initWithFrame:CGRectZero] autorelease];
+    if (!CGSizeEqualToSize(maxImageSize, CGSizeZero)) {
+        [coverView setMaxCoverSize:maxImageSize];
+    }
 	
 	coverView.number = coverIndex;
 	
@@ -148,7 +153,6 @@ const static CGFloat kReflectionFraction = 0.85;
 	CATransform3D newTransform;
 	CGFloat newZPosition = [AFOpenFlowGeometry sideCoverZPosition]/2;
 	CGPoint newPosition;
-	
     
 	newPosition.x = halfScreenWidth + aCover.horizontalPosition;
     //Bottom of the cover should always in the same place
@@ -197,7 +201,7 @@ const static CGFloat kReflectionFraction = 0.85;
     }
     
     aCover.layer.position = newPosition;
-	
+    
 	if (animated) {
 		[UIView commitAnimations];
 	}
@@ -414,12 +418,19 @@ const static CGFloat kReflectionFraction = 0.85;
 }
 
 - (void)setImage:(UIImage *)image forIndex:(int)index {
+    [self setImage:image forIndex:index captionTitle:nil];
+}
+
+- (void)setImage:(UIImage *)image forIndex:(int)index captionTitle:(NSString*)captionTitle {
 	// Create a reflection for this image.
 	UIImage *imageWithReflection = [image addImageReflection:kReflectionFraction];
 	NSNumber *coverNumber = [NSNumber numberWithInt:index];
 	[coverImages setObject:imageWithReflection forKey:coverNumber];
 	[coverImageHeights setObject:[NSNumber numberWithFloat:image.size.height] forKey:coverNumber];
-    [coverImageCaptions setObject:coverNumber forKey:coverNumber];
+    if (captionTitle == nil) {
+        captionTitle = [coverNumber description];
+    }
+    [coverImageCaptions setObject:captionTitle forKey:coverNumber];
 	
 	// If this cover is onscreen, set its image and call layoutCover.
 	AFItemView *aCover = (AFItemView *)[onscreenCovers objectForKey:[NSNumber numberWithInt:index]];
@@ -429,20 +440,12 @@ const static CGFloat kReflectionFraction = 0.85;
 	}
 }
 
-- (void)setImage:(UIImage *)image forIndex:(int)index captionTitle:(NSString*)captionTitle {
-	// Create a reflection for this image.
-	UIImage *imageWithReflection = [image addImageReflection:kReflectionFraction];
-	NSNumber *coverNumber = [NSNumber numberWithInt:index];
-	[coverImages setObject:imageWithReflection forKey:coverNumber];
-	[coverImageHeights setObject:[NSNumber numberWithFloat:image.size.height] forKey:coverNumber];
-    [coverImageCaptions setObject:captionTitle forKey:coverNumber];
-	
-	// If this cover is onscreen, set its image and call layoutCover.
-	AFItemView *aCover = (AFItemView *)[onscreenCovers objectForKey:[NSNumber numberWithInt:index]];
-	if (aCover) {
-		[aCover setImage:imageWithReflection originalImageHeight:image.size.height reflectionFraction:kReflectionFraction];
-		[self layoutCover:aCover selectedCover:selectedCoverView.number animated:NO];
-	}
+- (void)setMaxSizeForCoverFlowImages:(CGSize)maxSize {
+    //Set the max size for all AFItemViews.
+    maxImageSize = maxSize;
+    for (AFItemView *aCover in onscreenCovers) {
+        [self layoutCover:aCover selectedCover:selectedCoverView.number animated:NO];
+    }
 }
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {

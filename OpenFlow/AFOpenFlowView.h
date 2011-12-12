@@ -60,6 +60,8 @@
 	Boolean isDoubleTap;
 	Boolean isDraggingACover;
 	CGFloat startPosition;
+    
+    CGSize maxImageSize;
 }
 
 @property (nonatomic, assign) IBOutlet id <AFOpenFlowViewDataSource> dataSource;
@@ -72,6 +74,7 @@
 - (void)centerOnSelectedCover:(BOOL)animated;
 - (void)setImage:(UIImage *)image forIndex:(int)index;
 - (void)setImage:(UIImage *)image forIndex:(int)index captionTitle:(NSString*)captionTitle;
+- (void)setMaxSizeForCoverFlowImages:(CGSize)maxSize;
 
 @end
 

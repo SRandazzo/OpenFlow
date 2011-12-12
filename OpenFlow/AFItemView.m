@@ -27,7 +27,7 @@
 #import <QuartzCore/QuartzCore.h>
 
 @implementation AFItemView
-@synthesize number, imageView, horizontalPosition, originalImageHeight, verticalPosition;
+@synthesize number, imageView, horizontalPosition, originalImageHeight, verticalPosition, maxCoverSize;
 
 - (id)initWithFrame:(CGRect)frame {
 	if (self = [super initWithFrame:frame]) {
@@ -40,16 +40,25 @@
 		imageView = [[UIImageView alloc] initWithFrame:frame];
 		imageView.opaque = YES;
 		[self addSubview:imageView];
-	}
+    }
 	
 	return self;
+}
+
+-(void)setMaxCoverSize:(CGSize)size
+{
+    maxCoverSize.width = size.width;
+    maxCoverSize.height = size.height;
+    //Set the height *2 to account for the reflection
+    [imageView setFrame:CGRectMake(0, 0, maxCoverSize.width, maxCoverSize.height*2)];
+    [imageView setContentMode:UIViewContentModeScaleAspectFit];
 }
 
 - (void)setImage:(UIImage *)newImage originalImageHeight:(CGFloat)imageHeight reflectionFraction:(CGFloat)reflectionFraction {
 	[imageView setImage:newImage];
 	verticalPosition = imageHeight * reflectionFraction / 2;
 	originalImageHeight = imageHeight;
-	self.frame = CGRectMake(0, 0, newImage.size.width, newImage.size.height);
+	self.frame = CGRectMake(0, 0, imageView.frame.size.width, imageView.frame.size.height);
 }
 
 - (void)setNumber:(int)newNumber {
