@@ -38,7 +38,8 @@
 		
 		// Image View
 		imageView = [[UIImageView alloc] initWithFrame:frame];
-		imageView.opaque = YES;
+        [imageView setBackgroundColor:[UIColor clearColor]];
+		//imageView.opaque = YES;
 		[self addSubview:imageView];
     }
 	

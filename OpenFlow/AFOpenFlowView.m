@@ -122,7 +122,7 @@ const static CGFloat kReflectionFraction = 0.85;
     }
 	
 	coverView.number = coverIndex;
-	
+    
 	return coverView;
 }
 
