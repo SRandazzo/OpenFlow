@@ -39,8 +39,9 @@
 		// Image View
 		imageView = [[UIImageView alloc] initWithFrame:frame];
         [imageView setBackgroundColor:[UIColor clearColor]];
-		//imageView.opaque = YES;
-		[self addSubview:imageView];
+        [self addSubview:imageView];
+        
+        [self setMaxCoverSize:CGSizeMake(frame.size.width, frame.size.height)];
     }
 	
 	return self;

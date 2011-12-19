@@ -52,7 +52,7 @@ const static CGFloat kReflectionAlpha    = 0.30;
     [self setBackgroundColor:[UIColor clearColor]];        
     // Set up the default image for the coverflow.
 	self.defaultImage = [self.dataSource defaultImage];
-    
+            
 	// Create data holders for onscreen & offscreen covers & UIImage objects.
 	coverImages = [[NSMutableDictionary alloc] init];
 	coverImageHeights = [[NSMutableDictionary alloc] init];
@@ -99,7 +99,7 @@ const static CGFloat kReflectionAlpha    = 0.30;
     
     [self addSubview:selectedCoverCaption];
     
-    maxImageSize = CGSizeZero;
+    [self setMaxSizeForCoverFlowImages:CGSizeMake(self.frame.size.width, self.frame.size.height)];
 }
 
 - (AFItemView *)coverForIndex:(int)coverIndex {
@@ -119,7 +119,6 @@ const static CGFloat kReflectionAlpha    = 0.30;
         [doubleTapGesture setNumberOfTapsRequired:2];
         [coverView addGestureRecognizer:doubleTapGesture];
         [doubleTapGesture release];
-
     }
 	
 	coverView.number = coverIndex;
@@ -157,7 +156,7 @@ const static CGFloat kReflectionAlpha    = 0.30;
     
 	newPosition.x = halfScreenWidth + aCover.horizontalPosition;
     //Bottom of the cover should always in the same place
-	newPosition.y = 265;
+	newPosition.y = 240;
     if (coverNumber < selectedIndex) {
 		newPosition.x -= [AFOpenFlowGeometry centerCoverOffset];
 		newTransform = leftTransform;
@@ -205,6 +204,8 @@ const static CGFloat kReflectionAlpha    = 0.30;
 	if (animated) {
 		[UIView commitAnimations];
 	}
+    
+    [self bringSubviewToFront:selectedCoverCaption];
 }
 
 - (void)layoutCovers:(int)selected fromCover:(int)lowerBound toCover:(int)upperBound {
@@ -255,7 +256,7 @@ const static CGFloat kReflectionAlpha    = 0.30;
         [cover removeFromSuperview];
     }
     
-    [[self appWindow] removeObjectWithInterest:self];
+    //[[self appWindow] removeObjectWithInterest:self];
 	[defaultImage release];
     defaultImage = nil;
 	
@@ -289,11 +290,12 @@ const static CGFloat kReflectionAlpha    = 0.30;
     }
         
     CGFloat horizOrigin = contentOffset.x + halfScreenWidth - CAPTION_WIDTH / 2;
-    CGFloat vertOrigin = selectedCoverView.frame.origin.y + selectedCoverView.frame.size.height / 2.0 + CAPTION_OFFSET+10;
+    CGFloat vertOrigin = selectedCoverView.frame.origin.y + selectedCoverView.frame.size.height / 2.0 + CAPTION_OFFSET+40;
     selectedCoverCaption.frame = CGRectMake(horizOrigin, vertOrigin, CAPTION_WIDTH, CAPTION_HEIGHT);
     selectedCoverCaption.text = [NSString stringWithFormat:@"%@", [coverImageCaptions objectForKey:[NSNumber numberWithInt:targetCover]]];
     // put it on top
     [self addSubview:selectedCoverCaption];
+    [self bringSubviewToFront:selectedCoverCaption];
 }
 
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event
