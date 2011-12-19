@@ -18,11 +18,11 @@
     if (!sideCoverAngle) {
         if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad)
         {
-            sideCoverAngle = 0.79f;
+            sideCoverAngle = 1.59f;
         }
         else 
         {
-            sideCoverAngle = 0.79f;
+            sideCoverAngle = 1.39f;
         }
     }
     return sideCoverAngle;
@@ -35,7 +35,7 @@
     if (!sideCoverZPosition) {
         if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad)
         {
-            sideCoverZPosition = -100.0f;
+            sideCoverZPosition = -150.0f;
         }
         else 
         {
@@ -51,7 +51,7 @@
     if (!coverSpacing) {
         if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad)
         {
-            coverSpacing = 60.0f;
+            coverSpacing = 80.0f;
         }
         else 
         {
@@ -67,7 +67,7 @@
     if (!centerCoverOffset) {
         if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad)
         {
-            centerCoverOffset = 70.0f;
+            centerCoverOffset = 270.0f;
         }
         else 
         {

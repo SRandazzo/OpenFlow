@@ -26,6 +26,6 @@
 
 @interface UIImage (AFUIImageReflection)
 
-- (UIImage *)addImageReflection:(CGFloat)reflectionFraction;
+- (UIImage *)addImageReflection:(CGFloat)reflectionFraction backgroundColor:(UIColor*)backgroundColor alpha:(CGFloat)alpha;
 
 @end

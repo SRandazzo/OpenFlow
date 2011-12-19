@@ -51,7 +51,7 @@
 	AFItemView						*selectedCoverView;
     UITextView                      *selectedCoverCaption;
 
-	CATransform3D leftTransform, rightTransform;
+	CATransform3D leftTransform, rightTransform, middleTransform;
 	
 	CGFloat halfScreenHeight;
 	CGFloat halfScreenWidth;
@@ -67,7 +67,8 @@
 @property (nonatomic, assign) IBOutlet id <AFOpenFlowViewDataSource> dataSource;
 @property (nonatomic, assign) IBOutlet id <AFOpenFlowViewDelegate> viewDelegate;
 @property (nonatomic, retain) UIImage *defaultImage;
-@property (nonatomic) int numberOfImages;
+
+@property (nonatomic, assign) int numberOfImages;
 @property (nonatomic, retain) UITextView *selectedCoverCaption;
 
 - (void)setSelectedCover:(int)newSelectedCover;
@@ -75,6 +76,8 @@
 - (void)setImage:(UIImage *)image forIndex:(int)index;
 - (void)setImage:(UIImage *)image forIndex:(int)index captionTitle:(NSString*)captionTitle;
 - (void)setMaxSizeForCoverFlowImages:(CGSize)maxSize;
+- (void)setUpInitialState;
+- (void)releaseAll;
 
 @end
 
@@ -82,6 +85,8 @@
 @optional
 - (void)openFlowView:(AFOpenFlowView *)openFlowView selectionDidChange:(int)index;
 - (void)openFlowView:(AFOpenFlowView *)openFlowView didTapItemView:(AFItemView *)itemView;
+- (void)openFlowView:(AFOpenFlowView *)openFlowView coverTapped:(int)index;
+
 @end
 
 @protocol AFOpenFlowViewDataSource <NSObject>

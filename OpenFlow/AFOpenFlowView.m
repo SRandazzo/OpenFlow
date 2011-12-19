@@ -24,43 +24,32 @@
  */
 #import "AFOpenFlowView.h"
 #import "AFUIImageReflection.h"
-#import "SBNotifyingWindow.h"
 #import "AFOpenFlowGeometry.h"
+
+#define COVER_BUFFER 6
 
 @interface AFOpenFlowView (hidden)
 
-- (void)setUpInitialState;
 - (AFItemView *)coverForIndex:(int)coverIndex;
 - (void)updateCoverImage:(AFItemView *)aCover;
 - (AFItemView *)dequeueReusableCover;
 - (void)layoutCovers:(int)selected fromCover:(int)lowerBound toCover:(int)upperBound;
 - (void)layoutCover:(AFItemView *)aCover selectedCover:(int)selectedIndex animated:(Boolean)animated;
 - (AFItemView *)findCoverOnscreen:(CALayer *)targetLayer;
+- (void)notifyCoverTapped;
 
 @end
 
-@implementation AFOpenFlowView (hidden)
+@implementation AFOpenFlowView
+@synthesize dataSource, viewDelegate, numberOfImages, defaultImage, selectedCoverCaption;
 
-const static CGFloat kReflectionFraction = 0.85;
-
-- (SBNotifyingWindow *)appWindow
-{
-    id appDel = [[UIApplication sharedApplication] delegate];
-    if([appDel respondsToSelector:@selector(window)])
-    {
-        UIWindow *window = [appDel performSelector:@selector(window)];
-        if([window isMemberOfClass:[SBNotifyingWindow class]])
-        {
-            return (SBNotifyingWindow *)window;
-        }
-    }
-    return nil;
-}
+// parameters for reflection
+const static CGFloat kReflectionFraction = 0.65;
+const static CGFloat kReflectionAlpha    = 0.30;
 
 - (void)setUpInitialState {
-    [[self appWindow] addObjectInterestedInTouches:self];
     
-    [self setBackgroundColor:[UIColor clearColor]];
+    [self setBackgroundColor:[UIColor clearColor]];        
     // Set up the default image for the coverflow.
 	self.defaultImage = [self.dataSource defaultImage];
     
@@ -82,7 +71,7 @@ const static CGFloat kReflectionFraction = 0.85;
     
     rightTransform = CATransform3DTranslate(CATransform3DIdentity, 0, 0, SIDE_COVER_ZPOSITION / 2.0);
 	rightTransform = CATransform3DRotate(rightTransform, sideCoverAngle, 0.0f, -1.0f, 0.0f);
-    
+    middleTransform = CATransform3DMakeTranslation(0.0, 0.0, 80.0);
     self.scrollEnabled = YES;
     self.userInteractionEnabled = YES;
     self.showsVerticalScrollIndicator = NO;
@@ -96,7 +85,7 @@ const static CGFloat kReflectionFraction = 0.85;
     
 	// Set some perspective
 	CATransform3D sublayerTransform = CATransform3DIdentity;
-	sublayerTransform.m34 = -0.01;
+	sublayerTransform.m34 = -0.003;
 	[self.layer setSublayerTransform:sublayerTransform];
     
     // Initialize Cover Caption
@@ -116,9 +105,21 @@ const static CGFloat kReflectionFraction = 0.85;
 - (AFItemView *)coverForIndex:(int)coverIndex {
 	AFItemView *coverView = [self dequeueReusableCover];
 	if (!coverView)
+    {
 		coverView = [[[AFItemView alloc] initWithFrame:CGRectZero] autorelease];
-    if (!CGSizeEqualToSize(maxImageSize, CGSizeZero)) {
-        [coverView setMaxCoverSize:maxImageSize];
+
+        if (!CGSizeEqualToSize(maxImageSize, CGSizeZero)) 
+            [coverView setMaxCoverSize:maxImageSize];
+             
+        UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(viewTapped:)];
+        [coverView addGestureRecognizer:tapGesture];
+        [tapGesture release];
+        
+        UITapGestureRecognizer *doubleTapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(viewDoubleTapped:)];
+        [doubleTapGesture setNumberOfTapsRequired:2];
+        [coverView addGestureRecognizer:doubleTapGesture];
+        [doubleTapGesture release];
+
     }
 	
 	coverView.number = coverIndex;
@@ -164,8 +165,7 @@ const static CGFloat kReflectionFraction = 0.85;
 		newPosition.x += [AFOpenFlowGeometry centerCoverOffset];
 		newTransform = rightTransform;
 	} else {
-		newZPosition = 0;
-		newTransform = CATransform3DIdentity;
+		newTransform = middleTransform;
 	}
 	
 	if (animated) {
@@ -229,13 +229,6 @@ const static CGFloat kReflectionFraction = 0.85;
 	
 	return aCover;
 }
-@end
-
-
-@implementation AFOpenFlowView
-@synthesize dataSource, viewDelegate, numberOfImages, defaultImage, selectedCoverCaption;
-
-#define COVER_BUFFER 6
 
 - (void)awakeFromNib {
 	[self setUpInitialState];
@@ -250,8 +243,21 @@ const static CGFloat kReflectionFraction = 0.85;
 }
 
 - (void)dealloc {
+    [self releaseAll];
+	
+	[super dealloc];
+}
+
+- (void)releaseAll
+{
+    for (id key in onscreenCovers) {
+        AFItemView* cover = [onscreenCovers objectForKey:key];
+        [cover removeFromSuperview];
+    }
+    
     [[self appWindow] removeObjectWithInterest:self];
 	[defaultImage release];
+    defaultImage = nil;
 	
 	[coverImages release];
 	[coverImageHeights release];
@@ -261,8 +267,6 @@ const static CGFloat kReflectionFraction = 0.85;
 	
 	[onscreenCovers removeAllObjects];
 	[onscreenCovers release];
-	
-	[super dealloc];
 }
 
 - (void)layoutSubviews
@@ -271,14 +275,10 @@ const static CGFloat kReflectionFraction = 0.85;
     //    NSLog(@"[%@ %s]", self, _cmd);
     halfScreenWidth = self.bounds.size.width / 2;
     halfScreenHeight = self.bounds.size.height / 2;
-    
-    int lowerBound = MAX(-1, selectedCoverView.number - COVER_BUFFER);
-    int upperBound = MIN(self.numberOfImages - 1, selectedCoverView.number + COVER_BUFFER);
-    
-    [self layoutCovers:selectedCoverView.number fromCover:lowerBound toCover:upperBound];
     [self setNumberOfImages:numberOfImages]; // resets view bounds and stuff
     CGPoint contentOffset = [self contentOffset];
-    int targetCover = (int) roundf(contentOffset.x / [AFOpenFlowGeometry coverSpacing]);
+    int targetCover = (int) roundf(contentOffset.x / 
+								   [AFOpenFlowGeometry coverSpacing]);
     if (targetCover != selectedCoverView.number) {
         if (targetCover < 0)
             [self setSelectedCover:0];
@@ -303,12 +303,6 @@ const static CGFloat kReflectionFraction = 0.85;
 }
 
 #pragma mark UIScrollViewDelegate
-//- (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView;                              
-//// called on start of dragging (may require some time and or distance to move)
-//{
-//    //NSLog(@"%s %f", _cmd, CACurrentMediaTime());
-//}
-
 - (void)centerCoverHelperAnimated
 {
     [self centerOnSelectedCover:YES];
@@ -323,70 +317,7 @@ const static CGFloat kReflectionFraction = 0.85;
     }
 }
 
-/*
- - (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView;      // called when scroll view grinds to a halt
- {
- NSLog(@"%s %f", _cmd, CACurrentMediaTime());
- 
- }
- - (void)scrollViewWillBeginDecelerating:(UIScrollView *)scrollView;   // called on finger up as we are moving
- {
- //[self centerOnSelectedCover:YES];
- NSLog(@"%s %f", _cmd, CACurrentMediaTime());
- //[self performSelector:@selector(centerCoverHelper) withObject:nil afterDelay:0.0];
- }
- 
- - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView; // called when setContentOffset/scrollRectVisible:animated: finishes. not called if not animating
- {
- //[self centerOnSelectedCover:YES];
- NSLog(@"%s %f", _cmd, CACurrentMediaTime());
- }
- */
-
-#pragma mark SBNotifyingWindowTouches
-
--(void)interestingEvent:(UIEvent *)event;
-{
-    //NSLog(@"%@ %s %@", self, _cmd, event);
-    
-    NSSet *touches = [event allTouches];
-    UITouch *touch = [touches anyObject];
-    UITouchPhase phase = [touch phase];
-    
-    if (phase == UITouchPhaseBegan) {
-        [self touchesBegan:touches withEvent:event];
-    }
-    if (phase == UITouchPhaseEnded)
-    {
-        [self touchesEnded:touches withEvent:event];
-    }
-    if (phase == UITouchPhaseCancelled) {
-        [self touchesCancelled:touches withEvent:event];
-    }
-    if (phase == UITouchPhaseMoved) {
-        [self touchesMoved:touches withEvent:event];
-    }
-}
-
 #pragma mark UIScrollView
-
-//-(void)setContentInset:(UIEdgeInsets)inset
-//{
-//    NSLog(@"[%@ %s%@]", self, _cmd, NSStringFromUIEdgeInsets(inset));
-//    
-//    [super setContentInset:inset];
-//}
-
-//-(void)setContentSize:(CGSize)contentSize
-//{
-//    NSLog(@"[%@ %s%@]", self, _cmd, NSStringFromCGSize(contentSize));
-//    [super setContentSize:contentSize];
-//}
-//- (void)setContentOffset:(CGPoint)contentOffset
-//{
-//    NSLog(@"[%@ %s%@]", self, _cmd, NSStringFromCGPoint(contentOffset));
-//    [super setContentOffset:contentOffset];
-//}
 
 - (void)setContentOffset:(CGPoint)contentOffset animated:(BOOL)animated;
 {
@@ -414,7 +345,7 @@ const static CGFloat kReflectionFraction = 0.85;
 - (void)setDefaultImage:(UIImage *)newDefaultImage {
 	[defaultImage release];
 	defaultImageHeight = newDefaultImage.size.height;
-	defaultImage = [[newDefaultImage addImageReflection:kReflectionFraction] retain];
+	defaultImage = [[newDefaultImage addImageReflection:kReflectionFraction backgroundColor:self.backgroundColor alpha:kReflectionAlpha] retain];
 }
 
 - (void)setImage:(UIImage *)image forIndex:(int)index {
@@ -423,7 +354,7 @@ const static CGFloat kReflectionFraction = 0.85;
 
 - (void)setImage:(UIImage *)image forIndex:(int)index captionTitle:(NSString*)captionTitle {
 	// Create a reflection for this image.
-	UIImage *imageWithReflection = [image addImageReflection:kReflectionFraction];
+	UIImage *imageWithReflection = [image addImageReflection:kReflectionFraction backgroundColor:self.backgroundColor alpha:kReflectionAlpha];
 	NSNumber *coverNumber = [NSNumber numberWithInt:index];
 	[coverImages setObject:imageWithReflection forKey:coverNumber];
 	[coverImageHeights setObject:[NSNumber numberWithFloat:image.size.height] forKey:coverNumber];
@@ -448,46 +379,27 @@ const static CGFloat kReflectionFraction = 0.85;
     }
 }
 
-- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
-    
-}
-
-- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
-    
-}
-
-- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
-    UITouch *touch = [touches anyObject];
-    if ([touch tapCount] == 1) {
-        // Which cover did the user tap?
-        CGPoint targetPoint = [[touches anyObject] locationInView:[self appWindow]];
-		CALayer *targetLayer = (CALayer *)[self.layer hitTest:targetPoint];
-		AFItemView *targetCover = [self findCoverOnscreen:targetLayer];
-        
-        if ([self.viewDelegate respondsToSelector:@selector(openFlowView:didTapItemView:)]) {
-            [self.viewDelegate openFlowView:self didTapItemView:targetCover];
-        }
-        
-		if (targetCover && (targetCover.number != selectedCoverView.number))
-        {
-            CGPoint selectedOffset = CGPointMake([AFOpenFlowGeometry coverSpacing] * targetCover.number, 0);
-            [self setContentOffset:selectedOffset animated:YES];
-        }
-    }
-    if ([touch tapCount] == 2) 
-    {
-        // Which cover did the user double tap?
-        CGPoint targetPoint = [[touches anyObject] locationInView:[self appWindow]];
-        CALayer *targetLayer = (CALayer *)[self.layer hitTest:targetPoint];
-        AFItemView *targetCover = [self findCoverOnscreen:targetLayer];
-        NSLog(@"Double tapped %@", targetCover);
-    }
-}
-
-- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event;
+-(void)viewTapped:(UIGestureRecognizer *)sender
 {
-    [self touchesEnded:touches withEvent:event];
+    AFItemView *targetCover = (AFItemView *)[sender view];
+    int number = [targetCover number];
+    if (targetCover && (number != selectedCoverView.number))
+    {
+        CGPoint selectedOffset = CGPointMake([AFOpenFlowGeometry coverSpacing] * targetCover.number, 0);
+        [self setContentOffset:selectedOffset animated:YES];
+    }
+    else {
+        [self notifyCoverTapped];
+    }
 }
+
+-(void)viewDoubleTapped:(UIGestureRecognizer *)sender
+{
+    AFItemView *targetCover = (AFItemView *)[sender view];
+    int number = [targetCover number];
+    NSLog(@"Double tapped %d", number);
+}
+
 
 - (void)centerOnSelectedCover:(BOOL)animated {
 	CGPoint selectedOffset = CGPointMake([AFOpenFlowGeometry coverSpacing] * selectedCoverView.number, 0);
@@ -499,6 +411,13 @@ const static CGFloat kReflectionFraction = 0.85;
     // And send the delegate the newly selected cover message.
     if ([self.viewDelegate respondsToSelector:@selector(openFlowView:selectionDidChange:)])
         [self.viewDelegate openFlowView:self selectionDidChange:selectedCoverView.number];
+}
+
+-(void)notifyCoverTapped
+{
+    // And send the delegate the newly selected cover message.
+    if ([self.viewDelegate respondsToSelector:@selector(openFlowView:coverTapped:)])
+        [self.viewDelegate openFlowView:self coverTapped:selectedCoverView.number];
 }
 
 - (void)setSelectedCover:(int)newSelectedCover {

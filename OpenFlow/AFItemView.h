@@ -35,7 +35,7 @@
     CGSize          maxCoverSize;
 }
 
-@property (nonatomic) int number;
+@property (nonatomic, assign)   int number;
 @property (nonatomic, readonly) CGFloat horizontalPosition;
 @property (nonatomic, readonly) CGFloat verticalPosition;
 @property (nonatomic, readonly) CGFloat originalImageHeight;
